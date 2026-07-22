@@ -101,6 +101,18 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
+@st.dialog("📄 Sheet viewer", width="large")
+def show_sheet_dialog(sheet: dict) -> None:
+    """Big modal view of a sheet — opens full-size, closes via X / Esc / click-outside."""
+    st.markdown(f"#### {sheet['name']}")
+    st.caption(
+        "If this stays blank, your workspace's sharing policy is blocking "
+        "embeds — use Open in new tab instead."
+    )
+    st.link_button("Open in new tab ↗", sheet["url"])
+    st.components.v1.iframe(sheet["url"], height=720, scrolling=True)
+
+
 # --------------------------------------------------------------------------
 # Page: Sheets
 # --------------------------------------------------------------------------
@@ -108,7 +120,7 @@ if page == "📁 Sheets":
     st.markdown('<div class="cbm-title">Your Sheets</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="cbm-subtitle">Everything from your index, one click away. '
-        "Toggle a card open to edit or view it right here.</div>",
+        "Click <b>View here</b> to open a sheet full-size, or <b>Open ↗</b> for a new tab.</div>",
         unsafe_allow_html=True,
     )
 
@@ -141,15 +153,10 @@ if page == "📁 Sheets":
                         f'<div class="cbm-card-desc">{sheet.get("description") or "&nbsp;"}</div>',
                         unsafe_allow_html=True,
                     )
-                    st.link_button("Open ↗", sheet["url"], use_container_width=True)
-
-                    with st.expander("Embed here"):
-                        st.caption(
-                            "Loads the live sheet in-page. If it stays blank, your "
-                            "workspace's sharing policy is blocking embeds — use "
-                            "Open ↗ instead."
-                        )
-                        st.components.v1.iframe(sheet["url"], height=520, scrolling=True)
+                    b1, b2 = st.columns(2)
+                    b1.link_button("Open ↗", sheet["url"], use_container_width=True)
+                    if b2.button("🔍 View here", key=f"view_{sheet['name']}", use_container_width=True):
+                        show_sheet_dialog(sheet)
         st.write("")
 
 # --------------------------------------------------------------------------
