@@ -8,6 +8,8 @@ import gspread
 from google.oauth2.service_account import Credentials
 from pptx import Presentation
 
+import streamlit as st
+
 
 SHEET_ID = "1tE4uXTSaO6rHk_W3GXU55FEwUfMw_CLdnMTXQJCWYx8"
 WORKSHEET_NAME = "BPAD"
@@ -117,16 +119,28 @@ def find_template(template_dir: Path) -> Path:
 
 
 def authorize(creds_path: Path):
-    if not creds_path.exists():
-        raise FileNotFoundError(f"Credentials file not found: {creds_path}")
+    # First try Streamlit secrets (production)
+    try:
+        credentials = Credentials.from_service_account_info(
+            dict(st.secrets["gcp_service_account"]),
+            scopes=SCOPES,
+        )
+        return gspread.authorize(credentials)
 
-    credentials = Credentials.from_service_account_file(
-        str(creds_path),
-        scopes=SCOPES,
-    )
-    return gspread.authorize(credentials)
+    except Exception:
+        # Fallback to local JSON credentials
+        if not creds_path.exists():
+            raise FileNotFoundError(
+                f"Credentials file not found: {creds_path} "
+                "and no [gcp_service_account] found in Streamlit secrets."
+            )
 
-
+        credentials = Credentials.from_service_account_file(
+            str(creds_path),
+            scopes=SCOPES,
+        )
+        return gspread.authorize(credentials)
+        
 def open_worksheet(gc) :
     sh = gc.open_by_key(SHEET_ID)
     return sh.worksheet(WORKSHEET_NAME)
