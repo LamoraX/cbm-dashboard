@@ -9,6 +9,7 @@ Deploy:         see README.md
 from datetime import date
 
 import streamlit as st
+import os
 
 from sheets_data import CATEGORY_ORDER, SHEETS
 from tools import duration_percentage, months_between, months_since, sitting_height
@@ -57,6 +58,11 @@ st.markdown(
 # app still runs locally while you're building it.
 # --------------------------------------------------------------------------
 def require_auth() -> None:
+    # Skip authentication when developing locally
+    if os.getenv("LOCAL_DEV") == "1":
+        st.sidebar.success("🛠️ Local development mode (authentication disabled)")
+        return
+
     auth_configured = "auth" in st.secrets
 
     if not auth_configured:
@@ -197,3 +203,34 @@ else:
         date_x = c1.date_input("Date x", value=date.today(), key="date_x")
         date_y = c2.date_input("Date x+n", value=date.today(), key="date_y")
         st.metric("Total duration (months)", months_between(date_x, date_y))
+
+
+from pathlib import Path
+import streamlit as st
+
+from reports.bpad_report_generator import generate_ppt, find_template, DEFAULT_TEMPLATE_DIR, DEFAULT_CREDS
+
+BASE_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = BASE_DIR / "outputs"
+
+st.subheader("CBM Reports")
+
+if st.button("Generate BPAD PPT"):
+    try:
+        template = find_template(DEFAULT_TEMPLATE_DIR)
+        output_path = OUTPUT_DIR / "bpad_report_filled.pptx"
+        saved = generate_ppt(
+            template_path=template,
+            output_path=output_path,
+            creds_path=DEFAULT_CREDS,
+        )
+        with open(saved, "rb") as f:
+            st.download_button(
+                label="Download generated PPT",
+                data=f,
+                file_name=saved.name,
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        st.success("Report generated successfully.")
+    except Exception as e:
+        st.error(f"Failed to generate report: {e}")
